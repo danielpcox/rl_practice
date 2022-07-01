@@ -1,6 +1,3 @@
-import signal
-
-import gym
 import torch
 import logging
 import os
@@ -10,6 +7,11 @@ LOG_LEVEL = os.environ.get('LOG_LEVEL', 'info').upper()
 
 os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = "1"
 
+class dotdict(dict):
+    """dot.notation access to dictionary attributes"""
+    __getattr__ = dict.get
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
 
 def initialize_logging():
     print(f'Initializing logging with level {LOG_LEVEL}')

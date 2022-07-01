@@ -1,6 +1,7 @@
+import cv2
 import torch
 import gym
-from setup import device
+from common import device
 import numpy as np
 
 class TensorPong():
@@ -8,7 +9,7 @@ class TensorPong():
         self.env = gym.make(name, render_mode=render_mode)
         self.observation_space = self.env.observation_space
         self.action_space = self.env.action_space
-        self.last_obs = np.zeros((80, 80))
+        self.last_obs = np.zeros((42, 42))
 
         self.device = device
 
@@ -24,20 +25,24 @@ class TensorPong():
         """Preprocess Pong observation
 
         in: numpy (210, 160, 3)
-        out: torch (1, 80, 80)
+        out: torch (1, 42, 42)
         """
 
-        # slice off top and bottom, and downsample
-        obs = obs[34:194:2, ::2, 2]
+        # slice off top and bottom
+        obs = obs[34:194, :, 2]
+
+        # HACK to avoid losing pixels, resize in two stages
+        obs = cv2.resize(obs, (80, 80))
+        obs = cv2.resize(obs, (42, 42))
 
         # result is diff between two frames to make easier for NN w/o memory
         result = obs - self.last_obs
 
+        self.last_obs = obs
+
         # Simplify values to {0, 1}
         result[result != 0] = 1
         result[result != 1] = 0
-
-        self.last_obs = obs
 
         result = torch.as_tensor(result,
                                  dtype=torch.float32,
