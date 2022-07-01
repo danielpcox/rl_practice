@@ -53,4 +53,3 @@ class ActorCritic(nn.Module):
         action = policy.sample()
         logp = policy.log_prob(action)
         return action, logp, value
-

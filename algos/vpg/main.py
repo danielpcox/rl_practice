@@ -2,17 +2,15 @@ import logging
 import signal
 import sys
 
-import common
 import torch
 
-from agent import ActorCritic
-from environment import TensorPong
-from hyperparameters import HID_DIM, LR, EPOCHS
-from train import train_one_epoch
+from algos.vpg.agent import ActorCritic
+from algos.vpg.environment import TensorPong
+from algos.vpg.hyperparameters import HID_DIM, LR, EPOCHS
+from algos.vpg.train import train_one_epoch
+import algos.vpg.common as common
 
 common.initialize_logging()
-
-
 
 if __name__ == '__main__':
     logging.info('Beginning setup')
