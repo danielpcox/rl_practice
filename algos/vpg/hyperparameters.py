@@ -1,0 +1,5 @@
+
+EPOCHS = 100000
+GAMMA = 0.99
+LR = 1e-3
+HID_DIM = 64
