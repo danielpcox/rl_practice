@@ -48,7 +48,7 @@ def train_one_epoch(env, agent: ActorCritic, actor_opt, critic_opt):
 
     advantages, rewards_to_go = get_ground_truths(τ)
 
-    # advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+    advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
     actor_loss = -(τ.logp * advantages).mean()
     actor_opt.zero_grad()
