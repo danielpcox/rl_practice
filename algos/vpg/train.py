@@ -1,5 +1,3 @@
-import logging
-
 import torch
 
 from common import dotdict
@@ -11,7 +9,7 @@ from typeguard import typechecked
 patch_typeguard()
 
 
-@typechecked
+@typechecked # TODO it seems typechecked isn't checking return values?
 def get_ground_truths(τ:dict[str,T['B',1]|T['B','C','H','W']]) -> (T['B',1],T['B',1]):
     reward_to_go = 0.
     advantage = 0.
