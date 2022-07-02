@@ -1,6 +1,3 @@
-from matplotlib import pyplot as plt
-import numpy as np
-
 # HACK because multinomial not yet implemented on MPS
 import torch
 import torch.nn as nn
@@ -46,6 +43,7 @@ class ActorCritic(nn.Module):
         self.device = device
         self.actor = PongActor(action_dim, hid_dim)
         self.critic = PongCritic(hid_dim)
+        self.to(device)
 
     def forward(self, x):
         policy = self.actor(x)

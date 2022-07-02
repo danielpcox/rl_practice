@@ -1,11 +1,12 @@
+
+import os
+os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = "1"
+
 import torch
 import logging
-import os
 import sys
 
 LOG_LEVEL = os.environ.get('LOG_LEVEL', 'info').upper()
-
-os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = "1"
 
 class dotdict(dict):
     """dot.notation access to dictionary attributes"""

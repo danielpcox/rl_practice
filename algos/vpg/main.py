@@ -1,6 +1,8 @@
-import logging
 import sys
 sys.path.insert(0, '.')
+import algos.vpg.common as common
+
+import logging
 
 import torch
 
@@ -8,7 +10,6 @@ from algos.vpg.agent import ActorCritic
 from algos.vpg.environment import TensorPong
 from algos.vpg.hyperparameters import HID_DIM, LR, EPOCHS
 from algos.vpg.train import train_one_epoch
-import algos.vpg.common as common
 
 common.initialize_logging()
 
