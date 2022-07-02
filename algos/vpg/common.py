@@ -6,6 +6,9 @@ import torch
 import logging
 import sys
 
+from torchtyping import patch_typeguard
+patch_typeguard()
+
 LOG_LEVEL = os.environ.get('LOG_LEVEL', 'info').upper()
 
 class dotdict(dict):

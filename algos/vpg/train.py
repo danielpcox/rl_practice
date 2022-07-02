@@ -6,8 +6,13 @@ from common import dotdict
 from hyperparameters import GAMMA, LAMBDA, V_EPOCHS
 from pdb import set_trace
 from agent import ActorCritic
+from torchtyping import patch_typeguard, TensorType as T
+from typeguard import typechecked
+patch_typeguard()
 
-def get_ground_truths(τ):
+
+@typechecked
+def get_ground_truths(τ:dict[str,T['B',1]|T['B','C','H','W']]) -> (T['B',1],T['B',1]):
     reward_to_go = 0.
     advantage = 0.
     V_t1 = 0.
@@ -15,12 +20,12 @@ def get_ground_truths(τ):
     advantages = []
 
     for i in reversed(range(len(τ.r))):
-        reward_to_go = τ.r[i] + GAMMA*reward_to_go
+        reward_to_go = τ.r[i] + GAMMA * reward_to_go
         rewards_to_go.append(reward_to_go)
 
         V_t = τ.v[i]
-        td_error = (τ.r[i] + GAMMA*V_t1) - V_t
-        advantage = td_error + GAMMA*LAMBDA*advantage
+        td_error = (τ.r[i] + GAMMA * V_t1) - V_t
+        advantage = td_error + GAMMA * LAMBDA * advantage
         advantages.append(advantage)
 
         V_t1 = V_t
@@ -40,11 +45,11 @@ def train_one_epoch(env, agent: ActorCritic, actor_opt, critic_opt):
     while not done:
         action, logp, value = agent(obs)
         obs, reward, done, info = env.step(action)
-        D.append({'o':obs, 'r':reward, 'logp':logp, 'v':value})
+        D.append({'o': obs, 'r': reward, 'logp': logp, 'v': value})
 
     # stack up D's tensors for vector computations
     # list[dict[str,Tensor] -> dict[str, Tensor]
-    τ = dotdict({k:torch.stack([traj[k] for traj in D]) for k in D[0].keys()})
+    τ = dotdict({k: torch.stack([traj[k] for traj in D]) for k in D[0].keys()})
 
     advantages, rewards_to_go = get_ground_truths(τ)
 
