@@ -1,16 +1,16 @@
 import torch
 import typer
 
-from algos.vpg import common
-from algos.vpg.environment import TensorPong
-from algos.vpg.agent import ActorCritic
-from algos.vpg.hyperparameters import HID_DIM
+from algos.common import utils
+from algos.common.environment import TensorPong
+from algos.common.agent import ActorCritic
+from algos.common.hyperparameters import HID_DIM
 
 
 def main(model_path: str, env_name: str = 'ALE/Pong-v5'):
     print(f'Running {model_path} in {env_name}...')
     env = TensorPong(name=env_name, render_mode='human')
-    agent = ActorCritic(action_dim=env.action_space.n, hid_dim=HID_DIM, device=common.device)
+    agent = ActorCritic(action_dim=env.action_space.n, hid_dim=HID_DIM, device=utils.device)
     if model_path is not None:
         import sys; sys.path.insert(0, './algos/vpg') # HACK
         agent = torch.load(model_path, map_location='cpu')

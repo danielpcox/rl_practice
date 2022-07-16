@@ -20,7 +20,7 @@ class PongActor(nn.Module):
         )
 
     @typechecked
-    def forward(self, x: T['B':...,'C','H','W']) -> Categorical:
+    def forward(self, x: T['B':...,'C','H','W']) -> (Categorical, T['B', 'A']):
         x = x.reshape(x.shape[0], -1)
         logits = self.mlp(x)
         policy = Categorical(logits=logits)
@@ -53,9 +53,9 @@ class ActorCritic(nn.Module):
         self.to(device)
 
     @typechecked
-    def forward(self, x: T['B':...,'C','H','W']) -> (T['B'],T['B'],T['B']):
+    def forward(self, x: T['B':...,'C','H','W']) -> (T['B'],T['B'],T['B','A'],T['B']):
         policy = self.actor(x)
         value = self.critic(x)
         action = policy.sample()
         logp = policy.log_prob(action)
-        return action, logp, value
+        return action, logp, policy.logits, value

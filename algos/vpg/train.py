@@ -1,38 +1,8 @@
 import torch
 
-from common import dotdict
-from hyperparameters import GAMMA, LAMBDA, V_EPOCHS
-from pdb import set_trace
-from agent import ActorCritic
-from torchtyping import patch_typeguard, TensorType as T
-from typeguard import typechecked
-patch_typeguard()
-
-
-@typechecked # TODO it seems typechecked isn't checking return values?
-def get_ground_truths(τ:dict[str,T['B',1]|T['B','C','H','W']]) -> (T['B',1],T['B',1]):
-    reward_to_go = 0.
-    advantage = 0.
-    V_t1 = 0.
-    rewards_to_go = []
-    advantages = []
-
-    for i in reversed(range(len(τ.r))):
-        reward_to_go = τ.r[i] + GAMMA * reward_to_go
-        rewards_to_go.append(reward_to_go)
-
-        V_t = τ.v[i]
-        td_error = (τ.r[i] + GAMMA * V_t1) - V_t
-        advantage = td_error + GAMMA * LAMBDA * advantage
-        advantages.append(advantage)
-
-        V_t1 = V_t
-
-    rewards_to_go = torch.as_tensor(list(reversed(rewards_to_go)), dtype=torch.float32).unsqueeze(dim=1)
-    advantages = torch.as_tensor(list(reversed(advantages)), dtype=torch.float32).unsqueeze(dim=1)
-
-    return advantages, rewards_to_go
-
+from algos.common.utils import dotdict, get_ground_truths
+from algos.common.hyperparameters import V_EPOCHS, NEVER_DIV0
+from algos.common.agent import ActorCritic
 
 def train_one_epoch(env, agent: ActorCritic, actor_opt, critic_opt):
     obs = env.reset()
@@ -41,7 +11,7 @@ def train_one_epoch(env, agent: ActorCritic, actor_opt, critic_opt):
 
     # TODO don't wait until it's done - update periodically
     while not done:
-        action, logp, value = agent(obs)
+        action, logp, _, value = agent(obs)
         obs, reward, done, info = env.step(action)
         D.append({'o': obs, 'r': reward, 'logp': logp, 'v': value})
 
@@ -49,11 +19,10 @@ def train_one_epoch(env, agent: ActorCritic, actor_opt, critic_opt):
     # list[dict[str,Tensor] -> dict[str, Tensor]
     τ = dotdict({k: torch.stack([traj[k] for traj in D]) for k in D[0].keys()})
 
-    advantages, rewards_to_go = get_ground_truths(τ)
+    # advantages and rewards-to-go
+    τ.adv, τ.rtg = get_ground_truths(τ)
 
-    advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
-
-    actor_loss = -(τ.logp * advantages).mean()
+    actor_loss = -(τ.logp * τ.adv).mean()
     actor_opt.zero_grad()
     actor_loss.backward()
     # torch.nn.utils.clip_grad_norm_(agent.actor.parameters(), 1)
@@ -61,7 +30,7 @@ def train_one_epoch(env, agent: ActorCritic, actor_opt, critic_opt):
 
     # re-run obs through model for multiple critic update epochs
     for ve in range(V_EPOCHS):
-        critic_loss = (τ.v - rewards_to_go).pow(2).mean()
+        critic_loss = (τ.v - τ.rtg).pow(2).mean()
         critic_opt.zero_grad()
         critic_loss.backward()
         critic_opt.step()

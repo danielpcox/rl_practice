@@ -1,7 +1,7 @@
 import cv2
 import torch
 import gym
-from algos.vpg.common import device
+from algos.common.utils import device
 import numpy as np
 
 class TensorPong():

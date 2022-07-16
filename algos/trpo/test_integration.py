@@ -13,7 +13,7 @@ import torch
 from algos.common.agent import ActorCritic
 from algos.common.environment import TensorPong
 from algos.common.hyperparameters import HID_DIM, LR
-from algos.vpg.train import train_one_epoch
+from algos.trpo.train import train_one_epoch
 
 device = torch.device('cpu')
 

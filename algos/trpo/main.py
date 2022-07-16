@@ -1,17 +1,14 @@
 import sys
-
-
 sys.path.insert(0, '.')
-
 import logging
 
 import torch
 
-from algos.common import utils
+import algos.common.utils as utils
 from algos.common.agent import ActorCritic
 from algos.common.environment import TensorPong
 from algos.common.hyperparameters import HID_DIM, LR, EPOCHS
-from algos.vpg.train import train_one_epoch
+from algos.trpo.train import train_one_epoch
 
 utils.initialize_logging()
 
