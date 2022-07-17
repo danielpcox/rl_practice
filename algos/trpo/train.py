@@ -1,9 +1,10 @@
+import logging
 from functools import partial
 
 import torch
 from torch import autograd
 from torch.distributions import Categorical, kl_divergence
-from torch.nn.utils import parameters_to_vector
+from torch.nn.utils import parameters_to_vector, vector_to_parameters
 
 from algos.common import utils
 from algos.common.utils import dotdict
@@ -13,17 +14,14 @@ from torchtyping import patch_typeguard, TensorType as T
 from typeguard import typechecked
 patch_typeguard()
 
-def reevaluate(agent, τ):
+def reevaluate(agent, τ, pi_old):
     pi = agent.actor(τ.o)
-    ratio = pi.log_prob(τ.a) - τ.logp.detach()
+    ratio = (pi.log_prob(τ.a) - τ.logp).exp()
     loss = -(ratio * τ.adv).mean() # importance-sampled policy loss
-    # explicit gradient repo
-    g = parameters_to_vector(autograd.grad(loss, agent.actor.parameters(), retain_graph=True))
-    pi_old = Categorical(logits=τ.logits.detach())
-    Dkl = kl_divergence(pi_old, pi)
-    return loss, g, Dkl
+    Dkl = kl_divergence(pi_old, pi).mean()
+    return pi, loss, Dkl
 
-def train_one_epoch(env, agent: ActorCritic, actor_opt, critic_opt):
+def train_one_epoch(env, agent: ActorCritic, critic_opt):
     obs = env.reset()
     done = False
     D = []
@@ -31,27 +29,39 @@ def train_one_epoch(env, agent: ActorCritic, actor_opt, critic_opt):
     while not done:
         action, logp, logits, value = agent(obs)
         obs, reward, done, info = env.step(action)
-        D.append({'o': obs, 'a': action, 'r': reward, 'logp': logp, 'logits': logits, 'v': value})
+        D.append({'o': obs, 'a': action, 'r': reward, 'logp': logp.detach(), 'logits': logits.squeeze(0), 'v': value})
 
     τ = dotdict({k: torch.stack([traj[k] for traj in D]) for k in D[0].keys()})
 
     # advantages and rewards-to-go
     τ.adv, τ.rtg = utils.get_ground_truths(τ)
 
-    # actor_loss = -(τ.logp * τ.adv).mean()
-    # actor_opt.zero_grad()
-    # actor_loss.backward()
-    # actor_opt.step()
-
     ### TRPO
-    loss, g, Dkl = reevaluate(agent, τ)
-    Hs = partial(utils.hessian_vector_product, Dkl, agent.actor.parameters())
+    pi_old = Categorical(logits=τ.logits.detach())
+    pi, loss, Dkl = reevaluate(agent, τ, pi_old)
+
+    # get search direction s
+    g = parameters_to_vector(autograd.grad(loss, agent.actor.parameters(), retain_graph=True))
+    Hs = partial(utils.hessian_vector_product, Dkl, agent.actor)
     s = utils.conjugate_gradient(Hs, g)
 
-    for j in range(hyp.BACKTRACK_ITERS):
-        step_mult = hyp.TRPO_ALPHA ** j
-        # TODO implement
-        pass
+    # get max step size beta, original parameters theta, and original loss
+    beta = torch.sqrt(2*hyp.MAX_Dkl / (torch.dot(s, Hs(s)) + hyp.NEVER_DIV0)).item()
+    theta_old = parameters_to_vector(agent.actor.parameters()).detach()
+    old_loss = loss.item()
+
+    with torch.no_grad():
+        for j in range(hyp.BACKTRACK_ITERS):
+            step = hyp.TRPO_ALPHA ** j
+            vector_to_parameters(theta_old - step*beta*s, agent.actor.parameters())
+
+            pi, loss, Dkl = reevaluate(agent, τ, pi_old)
+
+            if loss < old_loss and Dkl.item() < hyp.MAX_Dkl:
+                break
+            elif j == hyp.BACKTRACK_ITERS-1:
+                logging.info('Failed to satisfy constraints - reverting params')
+                vector_to_parameters(theta_old, agent.actor.parameters())
 
     ### /TRPO
 

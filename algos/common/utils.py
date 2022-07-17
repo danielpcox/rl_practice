@@ -1,13 +1,14 @@
 import os
 import sys
 
-from torch import autograd
+from torch import autograd, nn
 from torch.nn.utils import parameters_to_vector
 
 os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = "1"
 
 from torchtyping import patch_typeguard, TensorType as T
 from typeguard import typechecked
+
 patch_typeguard()
 
 import torch
@@ -48,7 +49,7 @@ print(device)
 
 
 @typechecked  # TODO it seems typechecked isn't checking return values?
-def get_ground_truths(τ: dict[str, T['B', 1] | T['B', 1, 'A'] | T['B', 'C', 'H', 'W']]) -> (T['B', 1], T['B', 1]):
+def get_ground_truths(τ: dict[str, T['B', 1] | T['B', 'A'] | T['B', 'C', 'H', 'W']]) -> (T['B', 1], T['B', 1]):
     reward_to_go = 0.
     advantage = 0.
     V_t1 = 0.
@@ -73,12 +74,16 @@ def get_ground_truths(τ: dict[str, T['B', 1] | T['B', 1, 'A'] | T['B', 'C', 'H'
     return advantages, rewards_to_go
 
 
-def hessian_vector_product(Dkl, params, s):
-    g = parameters_to_vector(autograd.grad(Dkl, params, create_graph=True))
-    return parameters_to_vector(autograd.grad((g * s.detach()).sum(), params, retain_graph=True)) + hyp.Hs_DAMP * s
+# https://github.com/Kaixhin/spinning-up-basic/blob/f9cbe/trpo.py#L19-L21
+def hessian_vector_product(M, model, x):
+    """Compute the product of (the Hessian of M) and x wrt params"""
+    g = parameters_to_vector(autograd.grad(M, model.parameters(), create_graph=True))
+    return parameters_to_vector(autograd.grad((g * x.detach()).sum(), model.parameters(), retain_graph=True)) + hyp.Hx_DAMP * x
 
 
+# https://github.com/Kaixhin/spinning-up-basic/blob/f9cbe/trpo.py#L24-L37
 def conjugate_gradient(Ax, b, iters=10):
+    """Let Ax = b. Given Ax, and b, approximately solve for x."""
     x = torch.zeros_like(b)
     r = b - Ax(x)  # Residual
     p = r  # Conjugate vector
