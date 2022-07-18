@@ -18,7 +18,7 @@ Find me on Twitter [@danielpcox](https://twitter.com/danielpcox) if you see anyt
 Train an algorithm with, e.g.:
 
 ```bash
-python main.py train algos.vpg
+python main.py train vpg
 ```
 
 If you interrupt it with a KeyboardInterrupt exception (Ctrl+C), it'll save the model to `/tmp/agent.pt`.

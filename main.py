@@ -21,10 +21,10 @@ def train(algorithm: str):
     actor_opt = torch.optim.Adam(agent.actor.parameters(), lr=hyp.LR)
     critic_opt = torch.optim.Adam(agent.critic.parameters(), lr=hyp.LR)
 
-    module = importlib.import_module(f'{algorithm}.train')
+    module = importlib.import_module(f'algos.{algorithm}.train')
     train_one_epoch = getattr(module, 'train_one_epoch')
 
-    logging.info(f'Beginning training with {algorithm}')
+    logging.info(f'Beginning training with {algorithm.upper()}')
     try:
         for epoch in range(hyp.EPOCHS):
             rewards, length = train_one_epoch(env, agent, actor_opt, critic_opt)
