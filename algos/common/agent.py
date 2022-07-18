@@ -8,7 +8,7 @@ from torchtyping import TensorType as T
 from typeguard import typechecked
 
 class PongActor(nn.Module):
-    def __init__(self, action_dim, hid_dim, activation=nn.LeakyReLU):
+    def __init__(self, action_dim, hid_dim, activation=nn.Tanh):
         super().__init__()
 
         self.mlp = nn.Sequential(
@@ -20,14 +20,14 @@ class PongActor(nn.Module):
         )
 
     @typechecked
-    def forward(self, x: T['B':...,'C','H','W']) -> (Categorical, T['B', 'A']):
+    def forward(self, x: T['B','H','W']) -> (Categorical, T['B', 'A']):
         x = x.reshape(x.shape[0], -1)
         logits = self.mlp(x)
         policy = Categorical(logits=logits)
-        return policy
+        return policy, logits
 
 class PongCritic(nn.Module):
-    def __init__(self, hid_dim, activation=nn.LeakyReLU):
+    def __init__(self, hid_dim, activation=nn.Tanh):
         super().__init__()
 
         self.mlp = nn.Sequential(
@@ -54,8 +54,8 @@ class ActorCritic(nn.Module):
 
     @typechecked
     def forward(self, x: T['B':...,'C','H','W']) -> (T['B'],T['B'],T['B','A'],T['B']):
-        policy = self.actor(x)
+        policy, logits = self.actor(x)
         value = self.critic(x)
         action = policy.sample()
         logp = policy.log_prob(action)
-        return action, logp, policy.logits, value
+        return action, logp, logits, value

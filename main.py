@@ -51,7 +51,7 @@ def run(model_path: str, env_name: str = 'ALE/Pong-v5'):
     # obs = env.reset()
     # with torch.no_grad():
     #     while not done:
-    #         policy = agent.actor(obs)
+    #         policy, _ = agent.actor(obs)
     #         action = policy.probs.argmax()
     #         obs, _, _, _ = env.step(action)
 

@@ -17,7 +17,7 @@ patch_typeguard()
 
 
 def reevaluate(agent, tau, pi_old):
-    pi = agent.actor(tau.o)
+    pi, logits = agent.actor(tau.o)
     ratio = (pi.log_prob(tau.a) - tau.logp).exp()
     loss = -(ratio * tau.adv).mean()  # importance-sampled policy loss
     Dkl = kl_divergence(pi_old, pi).mean()
@@ -32,8 +32,9 @@ def train_one_epoch(env, agent: ActorCritic, actor_opt, critic_opt):
     # Play the game and record data
     while not done:
         action, logp, logits, value = agent(obs)
-        obs, reward, done, info = env.step(action)
+        next_obs, reward, done, info = env.step(action)
         D.append({'o': obs, 'a': action, 'r': reward, 'logp': logp.detach(), 'logits': logits.detach(), 'v': value})
+        obs = next_obs
 
     tau = dotdict({k: torch.cat([traj[k] for traj in D]) for k in D[0].keys()})
 
@@ -59,7 +60,7 @@ def train_one_epoch(env, agent: ActorCritic, actor_opt, critic_opt):
     with torch.no_grad():
         for j in range(hyp.BACKTRACK_ITERS):
             step = hyp.TRPO_ALPHA ** j
-            vector_to_parameters(theta_old + step * beta * s, agent.actor.parameters())
+            vector_to_parameters(theta_old - step * beta * s, agent.actor.parameters())
 
             pi, loss, Dkl = reevaluate(agent, tau, pi_old)
 
