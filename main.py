@@ -1,28 +1,60 @@
+import importlib
+import logging
+
 import torch
 import typer
+
+app = typer.Typer()
 
 from algos.common import utils
 from algos.common.environment import TensorPong
 from algos.common.agent import ActorCritic
-from algos.common.hyperparameters import HID_DIM
+import algos.common.hyperparameters as hyp
+
+utils.initialize_logging()
 
 
-def main(model_path: str, env_name: str = 'ALE/Pong-v5'):
+@app.command()
+def train(algorithm: str):
+    env = TensorPong(name='ALE/Pong-v5', render_mode='rgb_array')
+    agent = ActorCritic(action_dim=env.action_space.n, hid_dim=hyp.HID_DIM, device=utils.device)
+    actor_opt = torch.optim.Adam(agent.actor.parameters(), lr=hyp.LR)
+    critic_opt = torch.optim.Adam(agent.critic.parameters(), lr=hyp.LR)
+
+    module = importlib.import_module(f'{algorithm}.train')
+    train_one_epoch = getattr(module, 'train_one_epoch')
+
+    logging.info(f'Beginning training with {algorithm}')
+    try:
+        for epoch in range(hyp.EPOCHS):
+            rewards, length = train_one_epoch(env, agent, actor_opt, critic_opt)
+            logging.info(f'{epoch} Rewards:{rewards}, Length:{length}')
+    finally:
+        logging.info('Done. Saving model.')
+        torch.save(agent, '/tmp/agent.pt')
+
+
+# TODO fix this now that there's more than one algorithm
+@app.command()
+def run(model_path: str, env_name: str = 'ALE/Pong-v5'):
     print(f'Running {model_path} in {env_name}...')
-    env = TensorPong(name=env_name, render_mode='human')
-    agent = ActorCritic(action_dim=env.action_space.n, hid_dim=HID_DIM, device=utils.device)
-    if model_path is not None:
-        import sys; sys.path.insert(0, './algos/vpg') # HACK
-        agent = torch.load(model_path, map_location='cpu')
-    agent.eval()
-    done = False
-    obs = env.reset()
-    with torch.no_grad():
-        while not done:
-            policy = agent.actor(obs)
-            action = policy.probs.argmax()
-            obs, _, _, _ = env.step(action)
+    # env = TensorPong(name=env_name, render_mode='human')
+    # agent = ActorCritic(action_dim=env.action_space.n, hid_dim=HID_DIM, device=utils.device)
+    # if model_path is not None:
+    #     segments = algorithm.split('.')
+    #     mod = importlib.import_module('.'.join(segments[:-1]))
+    #     klass = getattr(mod, segments[-1])
+    #     instance = klass()
+    #     agent = torch.load(model_path, map_location='cpu')
+    # agent.eval()
+    # done = False
+    # obs = env.reset()
+    # with torch.no_grad():
+    #     while not done:
+    #         policy = agent.actor(obs)
+    #         action = policy.probs.argmax()
+    #         obs, _, _, _ = env.step(action)
 
 
 if __name__ == '__main__':
-    typer.run(main)
+    app()

@@ -15,16 +15,16 @@ Find me on Twitter [@danielpcox](https://twitter.com/danielpcox) if you see anyt
 
 ## Usage
 
-Currently, there is only VPG (Monte Carlo A2C without bootstrapping), which you can get training like so:
+Train an algorithm with, e.g.:
 
 ```bash
-python algos/vpg/main.py
+python main.py train algos.vpg
 ```
 
 If you interrupt it with a KeyboardInterrupt exception (Ctrl+C), it'll save the model to `/tmp/agent.pt`.
 
 Once you've got a trained agent saved somewhere, you can watch it play Pong with this:
 ```bash
-python main.py ~/somewhere/pongac.pt
+python main.py run /tmp/agent.pt
 ```
 

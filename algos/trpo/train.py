@@ -24,7 +24,7 @@ def reevaluate(agent, tau, pi_old):
     return pi, loss, Dkl
 
 
-def train_one_epoch(env, agent: ActorCritic, critic_opt):
+def train_one_epoch(env, agent: ActorCritic, actor_opt, critic_opt):
     obs = env.reset()
     done = False
     D = []
@@ -43,7 +43,7 @@ def train_one_epoch(env, agent: ActorCritic, critic_opt):
     #########################
     # TRPO actor optimization
     #########################
-    pi_old = Categorical(logits=tau.logits.detach())
+    pi_old = Categorical(logits=tau.logits)
     pi, loss, Dkl = reevaluate(agent, tau, pi_old)
 
     # get search direction s
@@ -59,7 +59,7 @@ def train_one_epoch(env, agent: ActorCritic, critic_opt):
     with torch.no_grad():
         for j in range(hyp.BACKTRACK_ITERS):
             step = hyp.TRPO_ALPHA ** j
-            vector_to_parameters(theta_old - step * beta * s, agent.actor.parameters())
+            vector_to_parameters(theta_old + step * beta * s, agent.actor.parameters())
 
             pi, loss, Dkl = reevaluate(agent, tau, pi_old)
 
