@@ -49,7 +49,7 @@ print(device)
 
 
 @typechecked  # TODO it seems typechecked isn't checking return values?
-def get_ground_truths(τ: dict[str, T['B', 1] | T['B', 'A'] | T['B', 'C', 'H', 'W']]) -> (T['B', 1], T['B', 1]):
+def get_ground_truths(τ: dict[str, T['B'] | T['B', 'A'] | T['B', 'H', 'W']]) -> (T['B'], T['B']):
     reward_to_go = 0.
     advantage = 0.
     V_t1 = 0.
@@ -67,8 +67,8 @@ def get_ground_truths(τ: dict[str, T['B', 1] | T['B', 'A'] | T['B', 'C', 'H', '
 
         V_t1 = V_t
 
-    rewards_to_go = torch.as_tensor(list(reversed(rewards_to_go)), dtype=torch.float32).unsqueeze(dim=1)
-    advantages = torch.as_tensor(list(reversed(advantages)), dtype=torch.float32).unsqueeze(dim=1)
+    rewards_to_go = torch.as_tensor(list(reversed(rewards_to_go)), dtype=torch.float32)
+    advantages = torch.as_tensor(list(reversed(advantages)), dtype=torch.float32)
     advantages = (advantages - advantages.mean()) / (advantages.std() + hyp.NEVER_DIV0)
 
     return advantages, rewards_to_go

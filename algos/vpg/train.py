@@ -17,7 +17,7 @@ def train_one_epoch(env, agent: ActorCritic, actor_opt, critic_opt):
 
     # stack up D's tensors for vector computations
     # list[dict[str,Tensor] -> dict[str, Tensor]
-    τ = dotdict({k: torch.stack([traj[k] for traj in D]) for k in D[0].keys()})
+    τ = dotdict({k: torch.cat([traj[k] for traj in D]) for k in D[0].keys()})
 
     # advantages and rewards-to-go
     τ.adv, τ.rtg = get_ground_truths(τ)
@@ -25,7 +25,6 @@ def train_one_epoch(env, agent: ActorCritic, actor_opt, critic_opt):
     actor_loss = -(τ.logp * τ.adv).mean()
     actor_opt.zero_grad()
     actor_loss.backward()
-    # torch.nn.utils.clip_grad_norm_(agent.actor.parameters(), 1)
     actor_opt.step()
 
     # re-run obs through model for multiple critic update epochs
