@@ -16,10 +16,10 @@ from typeguard import typechecked
 patch_typeguard()
 
 
-def reevaluate(agent, τ, pi_old):
-    pi = agent.actor(τ.o)
-    ratio = (pi.log_prob(τ.a) - τ.logp).exp()
-    loss = -(ratio * τ.adv).mean()  # importance-sampled policy loss
+def reevaluate(agent, tau, pi_old):
+    pi = agent.actor(tau.o)
+    ratio = (pi.log_prob(tau.a) - tau.logp).exp()
+    loss = -(ratio * tau.adv).mean()  # importance-sampled policy loss
     Dkl = kl_divergence(pi_old, pi).mean()
     return pi, loss, Dkl
 
@@ -35,16 +35,16 @@ def train_one_epoch(env, agent: ActorCritic, critic_opt):
         obs, reward, done, info = env.step(action)
         D.append({'o': obs, 'a': action, 'r': reward, 'logp': logp.detach(), 'logits': logits.detach(), 'v': value})
 
-    τ = dotdict({k: torch.cat([traj[k] for traj in D]) for k in D[0].keys()})
+    tau = dotdict({k: torch.cat([traj[k] for traj in D]) for k in D[0].keys()})
 
     # advantages and rewards-to-go
-    τ.adv, τ.rtg = utils.get_ground_truths(τ)
+    tau.adv, tau.rtg = utils.get_ground_truths(tau)
 
     #########################
     # TRPO actor optimization
     #########################
-    pi_old = Categorical(logits=τ.logits.detach())
-    pi, loss, Dkl = reevaluate(agent, τ, pi_old)
+    pi_old = Categorical(logits=tau.logits.detach())
+    pi, loss, Dkl = reevaluate(agent, tau, pi_old)
 
     # get search direction s
     g = parameters_to_vector(autograd.grad(loss, agent.actor.parameters(), retain_graph=True))
@@ -61,7 +61,7 @@ def train_one_epoch(env, agent: ActorCritic, critic_opt):
             step = hyp.TRPO_ALPHA ** j
             vector_to_parameters(theta_old - step * beta * s, agent.actor.parameters())
 
-            pi, loss, Dkl = reevaluate(agent, τ, pi_old)
+            pi, loss, Dkl = reevaluate(agent, tau, pi_old)
 
             if loss <= old_loss and Dkl.item() <= hyp.MAX_Dkl:
                 break
@@ -75,10 +75,10 @@ def train_one_epoch(env, agent: ActorCritic, critic_opt):
 
     # re-run obs through model for multiple critic update epochs
     for ve in range(hyp.V_EPOCHS):
-        critic_loss = (τ.v - τ.rtg).pow(2).mean()
+        critic_loss = (tau.v - tau.rtg).pow(2).mean()
         critic_opt.zero_grad()
         critic_loss.backward()
         critic_opt.step()
-        τ.v = agent.critic(τ.o)
+        tau.v = agent.critic(tau.o)
 
-    return τ.r.sum().item(), len(D)
+    return tau.r.sum().item(), len(D)

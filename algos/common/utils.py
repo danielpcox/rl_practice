@@ -50,19 +50,19 @@ print(device)
 
 
 @typechecked  # TODO it seems typechecked isn't checking return values?
-def get_ground_truths(τ: dict[str, T['B'] | T['B', 'A'] | T['B', 'H', 'W']]) -> (T['B'], T['B']):
+def get_ground_truths(tau: dict[str, T['B'] | T['B', 'A'] | T['B', 'H', 'W']]) -> (T['B'], T['B']):
     reward_to_go = 0.
     advantage = 0.
     V_t1 = 0.
     rewards_to_go = []
     advantages = []
 
-    for i in reversed(range(len(τ.r))):
-        reward_to_go = τ.r[i] + hyp.GAMMA * reward_to_go
+    for i in reversed(range(len(tau.r))):
+        reward_to_go = tau.r[i] + hyp.GAMMA * reward_to_go
         rewards_to_go.append(reward_to_go)
 
-        V_t = τ.v[i]
-        td_error = (τ.r[i] + hyp.GAMMA * V_t1) - V_t
+        V_t = tau.v[i]
+        td_error = (tau.r[i] + hyp.GAMMA * V_t1) - V_t
         advantage = td_error + hyp.GAMMA * hyp.LAMBDA * advantage
         advantages.append(advantage)
 
